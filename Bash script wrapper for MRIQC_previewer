@@ -1,0 +1,26 @@
+
+data_tsv="/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC/MRIQC_MPN_LARGEPOPULATION_REPORTS/group_bold_ses-MPN1Scan1__task-rest.tsv"
+
+data="/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC/SYNTHETIC_POPULATION/sub-MRIQC_85ARY-3292709-1/sub-MPN0000007" 
+
+sid="sub-MPN0000007"
+
+ses="ses-MPN1Scan1"
+
+output="/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC"
+
+save="YES"
+
+modality="bold"
+
+task="task-rest"
+
+run="run-1"
+
+echo="echo-2"
+
+IN="/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC"
+
+${IN}/mriqc_inspect_AUTO14SEP26.py --group_tsv $data_tsv --subject $sid --data $data --session $ses --output $output --task $task --run $run --echo $echo --save $save --modality $modality
+
+
