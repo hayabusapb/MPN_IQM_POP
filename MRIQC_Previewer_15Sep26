@@ -1,0 +1,203 @@
+#!/usr/bin/env python
+
+import argparse
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import json
+import os
+import glob
+import re
+
+# The IQM variables below are for BOLD should make code smart if some missing or some do not belong there
+
+def find_files_with_strings(directory_path, file_pattern, search_strings):
+    """
+    Finds files matching a glob pattern in a directory and subdirectories 
+    that contain any of the given search strings.
+
+    :param directory_path: The root directory to start searching from.
+    :param file_pattern: The glob pattern for files (e.g., "*.txt", "*.log").
+    :param search_strings: A list of strings to search for within the files.
+    :return: A list of file paths where at least one string match was found.
+    """
+    found_files = []
+    # Use "**" to match any files and zero or more directories/subdirectories recursively
+    # and set recursive=True
+    search_pattern = os.path.join(directory_path, "**", file_pattern)
+    files = glob.glob(search_pattern, recursive=True)
+    
+    # 2. Filter files ensuring EVERY string is present in the filename
+    found_files = [
+    file for file in files 
+    if all(s in file for s in search_strings)
+]
+
+    print(found_files)
+    return found_files
+
+
+    
+def main():
+
+# Parse CLI arguments
+
+    parser = argparse.ArgumentParser(prog='mriqc_inspect.py', 
+    description="Inspect IQMs for individual json file compare to population and append to it")
+    parser.add_argument('--group_tsv', required=True, help="Path of the MRIQC study's group tsv") 
+    parser.add_argument('--subject', required=True, help="Path of the BIDS individual subject")
+    parser.add_argument('--data', required=True, help="Path to the MRIQC study's individual subject output")
+    parser.add_argument('--session', required=True, help="The BIDS individual session label OR list")	
+    parser.add_argument('--output', required=True, help="output path for visulatizations")  
+    parser.add_argument('--modality', required=True, help="output path for visulatizations")  
+    parser.add_argument('--task', help="inpput task precisions for some modalities")
+    parser.add_argument('--run', help="input run precisions for some modalities")
+    parser.add_argument('--echo', help="input echo precisions for some modalities")
+    parser.add_argument('--save', help="incorporate pcpant json data to population tsv") # TO_DO 
+
+    args = parser.parse_args()
+    print(args.group_tsv, args.subject, args.data, args.session, args.output, args.modality, args.task, args.run, args.echo, args.save)
+       
+   
+    
+    #var call with {VAR_NAME}	
+    df = pd.read_csv(args.group_tsv, sep='\\t', index_col=0, engine='python')
+    file_glob_pattern = '*.json' # e.g., only search json of INDIVIDUAL ppnt IQMs
+    if args.modality=="bold": 
+     
+     strings_to_find = [args.subject, args.session, args.modality, args.task, args.run, args.echo] # Strings to look for# THEY ARE NPT EXCLUSSIVE!
+    else:
+     strings_to_find = [args.subject, args.session, args.modality] # Strings to look for
+     print(f"these are the strings to find {strings_to_find}")
+    
+    matching_files = find_files_with_strings(args.data, file_glob_pattern, strings_to_find)
+    
+    print(f"these are matching {matching_files}")
+    # Now take 1st matching_file (but should ITERATE here and do a comprehensive and deployable loop)
+    ### Should be able to receive tsvs of all participants in 1 folder ???
+    
+   # yes single participant will have separate echo, run,task for modality bold
+    mfile=matching_files[0]
+    basename = os.path.basename(mfile)[:-5]  # removing .json extension
+    
+    print(f"we are getting this {mfile}")
+    ## need to remove sub-MPN*_ tring by *sub-MPN0000106
+  
+    #clay=re.search(r'sub-MPN.{7}_',basename)
+    
+    
+    mpop=re.sub(r'sub-MPN.{7}_','^.*',basename)
+    filtered_df = df.filter(regex=mpop, axis=0) 
+    
+    if args.modality=="bold": 
+
+     filtered_df=df[df.index.str.contains('run-1_',na=False)&df.index.str.contains('echo-1',na=False)]   
+     filtered_df = filtered_df.transpose()
+     filtered_df.index.name = 'IQM'
+     df_melted = filtered_df.reset_index().melt(id_vars=['IQM'], var_name='Bids_name', value_name='Value')
+     variables = ['snr','tsnr', 'dvars_std','dvars_nstd','dvars_vstd','efc','fber','fwhm_avg','fwhm_x','fwhm_y','fwhm_z','fd_perc','fd_num','fd_mean','gsr_x','gsr_y','summary_bg_mean','summary_fg_mean','summary_bg_mean',
+    'summary_bg_p05','summary_bg_p95','summary_fg_p05','summary_fg_p95','summary_bg_median','summary_fg_median']
+    else:
+    
+     # Default structural metrics (9)
+     filtered_df = filtered_df.transpose()
+     filtered_df.index.name = 'IQM'
+     # add signal dropout measures: summary_#_p05 and summary_#_p95 hyperintensities other artifacts _p95
+     df_melted = filtered_df.reset_index().melt(id_vars=['IQM'], var_name='Bids_name', value_name='Value')
+     # Need to create new separate columns for aqi and aor #df1['New_Col'] = df2['B'].values
+     variables = ['snr_wm','snr_gm','snr_csf','snr_total','cnr','snrd_gm','snrd_wm','snrd_csf','snrd_total','inu_med','inu_range','icvs_csf','icvs_gm','icvs_wm', 'wm2max','efc','fber','fwhm_avg','fwhm_x','fwhm_y','fwhm_z','qi_2','rpve_csf','rpve_gm','rpve_wm','summary_bg_mean','summary_csf_mean','summary_gm_mean','summary_wm_mean',
+    'summary_wm_p05','summary_wm_p95','summary_gm_p05','summary_gm_p95','summary_csf_p05','summary_csf_p95','tpm_overlap_gm'] #35 measures /9 -> 4 figures
+    
+    data_list = []
+    # This section superimposes subject data
+    with open(mfile, 'r') as f:
+            data = json.load(f)
+            # Ensure data is not empty and is a dictionary/list
+            keys_to_remove = ["aor", "aqi","bids_meta","gcor","provenance"] # aqi and aor are triplet values thats why they are not collected right (TO DO)
+            for key in keys_to_remove:
+                data.pop(key, None)
+            # Assuming JSON structure: {"variable1": [...], "variable2": [...]}
+                df_temp = pd.DataFrame([data]) # wrap dictionary into a list
+                df_temp['source'] = mfile # Label data source
+                data_list.append(df_temp)        
+            df_all = pd.concat(data_list, ignore_index=True)
+    df_melted_SINGLE = df_all.melt(id_vars=['source'], value_vars=variables, var_name='IQM', value_name='Value')      
+      
+    # Does Plotting
+    n_cols=3
+    n_rows=3
+    interval_length = 9
+    
+    if args.modality=="bold": 
+     num_intervals = 3
+    else:
+     num_intervals = 4
+
+    # Extract 3 consecutive intervals using list slicing and enumerate
+    intervals = [variables[i : i + interval_length] for i in range(0, num_intervals * interval_length, interval_length)]
+
+
+    for j,varj in enumerate(intervals):
+
+      fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols*4, n_rows*3))
+      sns.set(font_scale=1)
+      axes = axes.flatten()
+    
+      for i, var in enumerate(varj):
+      # POP
+       subset = df_melted[df_melted['IQM'] == var]
+       sns.violinplot(data=subset, x='Value', fill=True, ax=axes[i], color="skyblue")
+       sns.boxplot(data=subset, x='Value', fill=True, linewidth=1.5, linecolor="red", medianprops={"color": "r", "linewidth": 2},boxprops={"facecolor": "pink","linewidth": 1.5}, flierprops={"marker": "x", "markerfacecolor": "r", "linewidth": 2},  ax=axes[i])
+       sns.stripplot(data=subset, x='Value', linewidth=1.5, color="red", edgecolor="r",  ax=axes[i])
+      
+       try:
+        print("Displaying Outlier stats") 
+        subset["Value"] = subset["Value"].astype(float)
+        q1 = subset["Value"].quantile(0.25)
+        q3 = subset["Value"].quantile(0.75)
+        iqr = q3 - q1
+
+        # 3. Define outlier boundaries
+        lower_bound = q1 - 1.5 * iqr # ~3std, Tukey
+        upper_bound = q3 + 1.5 * iqr
+
+        # 4. Identify outliers
+        outliers = []
+        outliers = subset[(subset["Value"]< lower_bound) | (subset["Value"] > upper_bound)]
+
+        # 5. Quantify the percentage
+        total_points = len(subset["Value"])
+        num_outliers = len(outliers)
+        percentage_outliers = (num_outliers / total_points) * 100
+
+        print(f"Total Data Points in {var}: {total_points}")
+        print(f"Number of Outliers in {var}: {num_outliers}")
+        print(f"Percentage of Outliers in {var}: {percentage_outliers:.2f}%")
+      
+       # Apply the flag per category group
+        sns.stripplot(data=outliers, x='Value', linewidth=1.5, color="yellow", edgecolor="y",  ax=axes[i])
+       except ValueError:
+        print("Insufficient data for estimates")
+       
+       # SINGLE
+       subset2 = df_melted_SINGLE[df_melted_SINGLE['IQM'] == var]
+       subset2["Value"] = pd.to_numeric(subset2["Value"], errors='coerce')
+       sns.stripplot(data=subset2, x='Value', linewidth=3.5, color="green", edgecolor="green",  ax=axes[i])
+       var2=var.replace('_', '\\_')
+       axes[i].set_title(f'$\\bf{{{var2}}}$ in {total_points} subs. & ({num_outliers}){percentage_outliers:.2f}% out.',fontsize=10)
+       axes[i].tick_params(axis='x', labelsize=10)
+       axes[i].tick_params(axis='y', labelsize=10)
+
+      fig.suptitle(basename, fontsize=14)
+      plt.rcParams['text.usetex'] = False
+      plt.subplots_adjust(wspace=0.1, hspace=0.5)
+      
+      plt.draw()
+      
+      #args.output
+      plt.savefig(rf"{args.output}/{args.subject}_{args.session}_{args.modality}_plot_iteration_{j}.pdf", bbox_inches='tight')
+      plt.pause(1)
+    plt.show()
+
+if __name__ == '__main__':
+    main()
