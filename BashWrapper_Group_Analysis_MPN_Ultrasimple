@@ -1,0 +1,18 @@
+# BASH wrapper for mriqc visualization and population outier-monitoring # json only
+
+
+gdata="/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC/SYNTHETIC_POPULATION/"
+
+sdata=${gdata}"/sub-MRIQC_GLOBAL_177ARY-3286544-1/sub-MPN0000166/ses-MPN1Scan1/anat/sub-MPN0000166_ses-MPN1Scan1_acq-aspire_desc-echoCombinedSensitivityCorrected_T2starw.json" 
+
+output="/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC"
+
+cd $output
+Group_Analysis_MPN_ULTRASIMPLE.py --gdata $group_tsv --sdata $sdata --output $output 
+
+
+
+## spyder python IDE configuration file for debugging
+
+--gdata "/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC/SYNTHETIC_POPULATION" --sdata "/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC/SYNTHETIC_POPULATION/sub-MRIQC_GLOBAL_177ARY-3286544-1/sub-MPN0000166/ses-MPN1Scan1/anat/sub-MPN0000166_ses-MPN1Scan1_acq-aspire_desc-echoCombinedSensitivityCorrected_T2starw.json" --output "/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC" 
+
