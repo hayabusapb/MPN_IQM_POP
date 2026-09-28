@@ -19,7 +19,17 @@ import re
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+import mplcursors
 
+## cursor does not work well because it is invoked on subplots ::: Try different alternative 
+
+def on_add(sel):
+    # Get the index of the hovered point
+    idx = sel.index
+    
+    sel.annotation.set_text(f"{match[idx]}\n(x: {x[idx]})") # Need the ID of the DOT !!! ## AT THE MOMENT NOT WORKING
+    sel.annotation.get_bbox_patch().set(fc="green", alpha=0.6)
+    match=subset["ID"]
 
 def find_files_with_strings(directory_path, file_pattern):
     """
@@ -206,6 +216,7 @@ def main():
       for i, var in enumerate(varj):
       # POP
        subset = df_melted[df_melted['IQM'] == var]
+       subset["ID"] = subset["Bids_name"].str.extract(r'(\d{4})_ses')
        sns.violinplot(data=subset, x='Value', fill=True, ax=axes[i], color="skyblue")
        sns.boxplot(data=subset, x='Value', fill=True, linewidth=1.5, linecolor="red", medianprops={"color": "r", "linewidth": 2},boxprops={"facecolor": "pink","linewidth": 1.5}, flierprops={"marker": "x", "markerfacecolor": "r", "linewidth": 2},  ax=axes[i])
        sns.stripplot(data=subset, x='Value', linewidth=1.5, color="red", edgecolor="r",  ax=axes[i])
@@ -247,7 +258,8 @@ def main():
        axes[i].set_title(f'$\\bf{{{var2}}}$ in {total_points} subs. & ({num_outliers}){percentage_outliers:.2f}% out.',fontsize=10)
        axes[i].tick_params(axis='x', labelsize=10)
        axes[i].tick_params(axis='y', labelsize=10)
-
+       cursor = mplcursors.cursor(axes[i],hover=True)
+       cursor.connect("add", lambda sel: sel.annotation.set_text(subset["ID"].iloc[sel.index]))
       fig.suptitle(basename, fontsize=14)
       plt.rcParams['text.usetex'] = False
       plt.subplots_adjust(wspace=0.1, hspace=0.5)
