@@ -1,3 +1,4 @@
+
 # BASH wrapper for mriqc visualization and population outier-monitoring # json only
 
 
@@ -8,9 +9,7 @@ sdata=${gdata}"/sub-MRIQC_GLOBAL_177ARY-3286544-1/sub-MPN0000166/ses-MPN1Scan1/a
 output="/home/hayabusa/PROJECT_MPN/MPN_DERIVATIVES/MPN_MRIQC"
 
 cd $output
-Group_Analysis_MPN_ULTRASIMPLE.py --gdata $group_tsv --sdata $sdata --output $output 
-
-
+./Group_Analysis_MPN_ULTRASIMPLE.py --gdata $gdata --sdata $sdata --output $output 
 
 ## spyder python IDE configuration file for debugging
 
